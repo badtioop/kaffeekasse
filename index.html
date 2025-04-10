@@ -4,9 +4,256 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kaffeekasse</title>
-  <!-- ... (style und body etc. siehe Canvas oben) ... -->
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f4f4f4;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    form {
+      margin-bottom: 20px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+    input, select, button {
+      padding: 8px;
+      margin: 5px 0;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    tfoot {
+      background-color: #efefef;
+      font-weight: bold;
+    }
+    .einzahlung { color: green; }
+    .auszahlung { color: red; }
+    .info {
+      font-size: 0.9em;
+      color: #555;
+      margin-top: -10px;
+      margin-bottom: 10px;
+    }
+    #kasseForm, #kassenTabelle, #logoutBtn {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-  <!-- Ganzer HTML-Inhalt aus dem Canvas -->
+  <h1>☕ Kaffeekasse</h1>
+
+  <form id="registerForm">
+    <label>Neuer Benutzername:
+      <input type="text" id="regUsername" required>
+    </label>
+    <label>Passwort:
+      <input type="password" id="regPassword" required>
+    </label>
+    <button type="submit">Registrieren</button>
+  </form>
+
+  <form id="loginForm">
+    <label>Benutzername:
+      <input type="text" id="username" required>
+    </label>
+    <label>Passwort:
+      <input type="password" id="password" required>
+    </label>
+    <button type="submit">Einloggen</button>
+  </form>
+
+  <button id="logoutBtn">Abmelden</button>
+
+  <form id="kasseForm">
+    <label>Datum:
+      <input type="date" id="datum" required>
+    </label>
+    <label>Betrag (€):
+      <input type="number" id="betrag" step="0.01" required>
+    </label>
+    <label>Typ:
+      <select id="typ">
+        <option value="Einzahlung">Einzahlung</option>
+        <option value="Auszahlung">Auszahlung</option>
+      </select>
+    </label>
+    <label>Grund:
+      <input type="text" id="grund" required>
+    </label>
+    <label>Name (wer hat gezahlt oder erhalten?):
+      <input type="text" id="name" required>
+    </label>
+    <button type="submit">Hinzufügen</button>
+    <div class="info" id="lastUser"></div>
+  </form>
+
+  <table id="kassenTabelle">
+    <thead>
+      <tr>
+        <th>Datum</th>
+        <th>Betrag (€)</th>
+        <th>Typ</th>
+        <th>Grund</th>
+        <th>Name</th>
+        <th>Hinzugefügt von</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+    <tfoot>
+      <tr>
+        <td colspan="5">Gesamtstand</td>
+        <td id="gesamt">0.00 €</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <script>
+    const loginForm = document.getElementById("loginForm");
+    const registerForm = document.getElementById("registerForm");
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const regUsername = document.getElementById("regUsername");
+    const regPassword = document.getElementById("regPassword");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const form = document.getElementById("kasseForm");
+    const tbody = document.querySelector("#kassenTabelle tbody");
+    const gesamtAnzeige = document.getElementById("gesamt");
+    const lastUser = document.getElementById("lastUser");
+    const table = document.getElementById("kassenTabelle");
+
+    let gesamt = 0;
+    let currentUser = localStorage.getItem("kaffeeUser") || "";
+    let userDB = JSON.parse(localStorage.getItem("userDB")) || {};
+
+    if (currentUser) {
+      showKasse(currentUser);
+    }
+
+    registerForm.addEventListener("submit", function(e) {
+      e.preventDefault();
+      const user = regUsername.value.trim();
+      const pass = regPassword.value.trim();
+      if (!user || !pass) return;
+      userDB[user] = pass;
+      localStorage.setItem("userDB", JSON.stringify(userDB));
+      alert("Registrierung erfolgreich! Jetzt bitte einloggen.");
+      registerForm.reset();
+    });
+
+    loginForm.addEventListener("submit", function(e) {
+      e.preventDefault();
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (userDB[username] && userDB[username] === password) {
+        currentUser = username;
+        localStorage.setItem("kaffeeUser", currentUser);
+        showKasse(currentUser);
+      } else {
+        alert("Login fehlgeschlagen. Bitte Benutzername und Passwort prüfen.");
+      }
+    });
+
+    logoutBtn.addEventListener("click", function() {
+      localStorage.removeItem("kaffeeUser");
+      location.reload();
+    });
+
+    function showKasse(user) {
+      loginForm.style.display = "none";
+      registerForm.style.display = "none";
+      form.style.display = "block";
+      table.style.display = "table";
+      logoutBtn.style.display = "inline-block";
+    }
+
+    document.getElementById("datum").valueAsDate = new Date();
+
+    function speichern() {
+      const daten = [];
+      tbody.querySelectorAll('tr').forEach(row => {
+        const zellen = row.querySelectorAll('td');
+        daten.push({
+          datum: zellen[0].innerText,
+          betrag: zellen[1].innerText,
+          typ: zellen[2].innerText,
+          grund: zellen[3].innerText,
+          name: zellen[4].innerText,
+          hinzu: zellen[5].innerText
+        });
+      });
+      localStorage.setItem('kaffeekasse', JSON.stringify(daten));
+      localStorage.setItem('saldo', gesamt);
+    }
+
+    function laden() {
+      const daten = JSON.parse(localStorage.getItem('kaffeekasse')) || [];
+      gesamt = parseFloat(localStorage.getItem('saldo')) || 0;
+      daten.forEach(eintrag => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${eintrag.datum}</td>
+          <td class="${eintrag.typ.toLowerCase()}">${eintrag.betrag}</td>
+          <td>${eintrag.typ}</td>
+          <td>${eintrag.grund}</td>
+          <td>${eintrag.name}</td>
+          <td>${eintrag.hinzu}</td>
+        `;
+        tbody.appendChild(row);
+      });
+      gesamtAnzeige.textContent = `${gesamt.toFixed(2)} €`;
+    }
+
+    form.addEventListener("submit", function(e) {
+      e.preventDefault();
+
+      const datum = document.getElementById("datum").value;
+      const betrag = parseFloat(document.getElementById("betrag").value);
+      const typ = document.getElementById("typ").value;
+      const grund = document.getElementById("grund").value;
+      const name = document.getElementById("name").value;
+
+      const row = document.createElement("tr");
+      const wirklicherBetrag = typ === "Auszahlung" ? -betrag : betrag;
+
+      row.innerHTML = `
+        <td>${datum}</td>
+        <td class="${typ.toLowerCase()}" >${wirklicherBetrag.toFixed(2)}</td>
+        <td>${typ}</td>
+        <td>${grund}</td>
+        <td>${name}</td>
+        <td>${currentUser}</td>
+      `;
+
+      tbody.appendChild(row);
+      gesamt += wirklicherBetrag;
+      gesamtAnzeige.textContent = `${gesamt.toFixed(2)} €`;
+
+      lastUser.textContent = `Letzter Eintrag hinzugefügt von: ${currentUser}`;
+
+      speichern();
+      form.reset();
+      document.getElementById("datum").valueAsDate = new Date();
+    });
+
+    window.onload = laden;
+  </script>
 </body>
 </html>
