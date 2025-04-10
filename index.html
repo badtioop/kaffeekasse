@@ -71,7 +71,7 @@
     <label>Grund:
       <input type="text" id="grund" required>
     </label>
-    <label>Name:
+    <label>Name (wer hat gezahlt oder erhalten?):
       <input type="text" id="name" required>
     </label>
     <button type="submit">Hinzufügen</button>
@@ -86,12 +86,13 @@
         <th>Typ</th>
         <th>Grund</th>
         <th>Name</th>
+        <th>Hinzugefügt von</th>
       </tr>
     </thead>
     <tbody></tbody>
     <tfoot>
       <tr>
-        <td colspan="4">Gesamtstand</td>
+        <td colspan="5">Gesamtstand</td>
         <td id="gesamt">0.00 €</td>
       </tr>
     </tfoot>
@@ -107,6 +108,49 @@
     // Aktuelles Datum beim Laden setzen
     document.getElementById("datum").valueAsDate = new Date();
 
+    function getUsername() {
+      try {
+        return window.navigator.userAgentData?.platform || window.navigator.platform || "Unbekannt";
+      } catch (e) {
+        return "Unbekannt";
+      }
+    }
+
+    function speichern() {
+      const daten = [];
+      tbody.querySelectorAll('tr').forEach(row => {
+        const zellen = row.querySelectorAll('td');
+        daten.push({
+          datum: zellen[0].innerText,
+          betrag: zellen[1].innerText,
+          typ: zellen[2].innerText,
+          grund: zellen[3].innerText,
+          name: zellen[4].innerText,
+          hinzu: zellen[5].innerText
+        });
+      });
+      localStorage.setItem('kaffeekasse', JSON.stringify(daten));
+      localStorage.setItem('saldo', gesamt);
+    }
+
+    function laden() {
+      const daten = JSON.parse(localStorage.getItem('kaffeekasse')) || [];
+      gesamt = parseFloat(localStorage.getItem('saldo')) || 0;
+      daten.forEach(eintrag => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${eintrag.datum}</td>
+          <td class="${eintrag.typ.toLowerCase()}">${eintrag.betrag}</td>
+          <td>${eintrag.typ}</td>
+          <td>${eintrag.grund}</td>
+          <td>${eintrag.name}</td>
+          <td>${eintrag.hinzu}</td>
+        `;
+        tbody.appendChild(row);
+      });
+      gesamtAnzeige.textContent = `${gesamt.toFixed(2)} €`;
+    }
+
     form.addEventListener('submit', function(e) {
       e.preventDefault();
 
@@ -115,6 +159,8 @@
       const typ = document.getElementById('typ').value;
       const grund = document.getElementById('grund').value;
       const name = document.getElementById('name').value;
+
+      const hinzugefuegtVon = getUsername();
 
       const row = document.createElement('tr');
       const wirklicherBetrag = typ === "Auszahlung" ? -betrag : betrag;
@@ -125,18 +171,22 @@
         <td>${typ}</td>
         <td>${grund}</td>
         <td>${name}</td>
+        <td>${hinzugefuegtVon}</td>
       `;
 
       tbody.appendChild(row);
       gesamt += wirklicherBetrag;
       gesamtAnzeige.textContent = `${gesamt.toFixed(2)} €`;
 
-      // Info, wer zuletzt hinzugefügt hat
-      lastUser.textContent = `Letzter Eintrag von: ${name}`;
+      lastUser.textContent = `Letzter Eintrag hinzugefügt von: ${hinzugefuegtVon}`;
 
+      speichern();
       form.reset();
       document.getElementById("datum").valueAsDate = new Date();
     });
+
+    // Beim Laden der Seite vorhandene Daten laden
+    window.onload = laden;
   </script>
 </body>
 </html>
