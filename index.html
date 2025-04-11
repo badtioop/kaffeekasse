@@ -4,8 +4,75 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kaffeekasse</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 2em;
+      background: url('https://raw.githubusercontent.com/badtioop/kaffeekasse/main/image.png') no-repeat center center fixed;
+      background-size: cover;
+    }
+    h1 {
+      color: #4B3832;
+      text-align: center;
+    }
+    form, table, #roleForm {
+      max-width: 600px;
+      margin: 1em auto;
+      background: #fff;
+      padding: 1em;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      padding: 0.5em;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.5em;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 0.5em;
+      margin-top: 0.2em;
+      margin-bottom: 1em;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .hidden { display: none; }
+    #logList {
+      max-width: 600px;
+      margin: 2em auto;
+      background: #fcfcfc;
+      border-left: 4px solid #ccc;
+      padding-left: 1em;
+    }
+  </style>
+  <style>
+    .overlay {
+      background-color: rgba(255, 255, 255, 0.9);
+      padding: 2em;
+      border-radius: 10px;
+      max-width: 800px;
+      margin: auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+  </style>
 </head>
 <body>
+  <div class="overlay">
   <h1>☕ Kaffeekasse WebApp</h1>
 
   <button id="showLogin">➕ Eintrag hinzufügen</button>
@@ -25,7 +92,7 @@
     <button type="submit">Speichern</button>
   </form>
 
-  <table id="kassenTabelle" border="1" style="width:100%; margin-top:20px;">
+  <table id="kassenTabelle">
     <thead>
       <tr>
         <th>Datum</th>
@@ -46,199 +113,134 @@
     </tfoot>
   </table>
 
-  <ul id="logList" style="font-size:0.9em;line-height:1.6em;padding-left:1em;color:#555;"></ul>
+  <ul id="logList"></ul>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-    import { getDatabase, ref, push, onValue, remove, update, get, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyAwBqdricy51uYn-a_OoqOOYuF2dgsLWIU",
-      authDomain: "kaffeekasse-8ca19.firebaseapp.com",
-      databaseURL: "https://kaffeekasse-8ca19-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "kaffeekasse-8ca19",
-      storageBucket: "kaffeekasse-8ca19.firebasestorage.app",
-      messagingSenderId: "959824393102",
-      appId: "1:959824393102:web:b6a9ca08a03fb042d5aadf"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-
-    let currentUserRole = "nutzer";
-
-    function setUserRole(email, role) {
-      const id = email.replace(/\./g, '_');
-      return set(ref(db, 'rollen/' + id), role);
-    }
-
-    function getUserRole(email) {
-      const id = email.replace(/\./g, '_');
-      return get(ref(db, 'rollen/' + id)).then(snapshot => snapshot.exists() ? snapshot.val() : "nutzer");
-    }
-
-    function watchNewEntries() {
-      const entriesRef = ref(db, 'eintraege');
-      let initial = true;
-      onValue(entriesRef, snapshot => {
-        if (!initial) {
-          const lastEntry = Object.values(snapshot.val() || {}).pop();
-          const message = `🔔 Neuer Eintrag von ${lastEntry.name || 'Unbekannt'}: ${lastEntry.betrag}€ für ${lastEntry.grund}`;
-          notifyAdmin(message);
-        }
-        initial = false;
-      });
-    }
-
-    function notifyAdmin(text) {
-      const div = document.createElement("div");
-      div.textContent = text;
-      div.style.background = "#ffe58f";
-      div.style.padding = "10px";
-      div.style.margin = "10px 0";
-      div.style.border = "1px solid #d4a01e";
-      div.style.borderRadius = "5px";
-      div.style.fontWeight = "bold";
-      div.style.color = "#333";
-      document.body.prepend(div);
-      setTimeout(() => div.remove(), 10000);
-    }
-
-    function renderRoleList() {
-      const roleListContainer = document.createElement("div");
-      roleListContainer.innerHTML = `<h3>👥 Alle registrierten Rollen</h3><ul id="roleList"></ul>`;
-      document.body.appendChild(roleListContainer);
-
-      const listRef = ref(db, 'rollen');
-      onValue(listRef, snapshot => {
-        const roleList = document.getElementById("roleList");
-        roleList.innerHTML = "";
-        const entries = snapshot.val();
-        for (const key in entries) {
-          const email = key.replace(/_/g, '.');
-          const role = entries[key];
-          const li = document.createElement("li");
-          const isCurrentAdmin = auth.currentUser?.email === email;
-
-          li.innerHTML = `
-            ${email} → <strong>${role}</strong>
-            ${!isCurrentAdmin ? `
-              <button onclick="changeRole('${email}', '${role === 'admin' ? 'nutzer' : 'admin'}')">
-                Ändern zu ${role === 'admin' ? 'Nutzer' : 'Admin'}
-              </button>
-            ` : '<span style="color:gray;">(eigener Admin)</span>'}
-          `;
-          roleList.appendChild(li);
-        }
-      });
-    }
-
-    window.changeRole = function(email, newRole) {
-      if (auth.currentUser?.email === email && newRole !== 'admin') {
-        alert("⚠️ Du kannst dich nicht selbst als Admin entfernen!");
-        return;
-      }
-      if (confirm(`Rolle für ${email} zu '${newRole}' ändern?`)) {
-        setUserRole(email, newRole).then(() => {
-          alert(`✅ Rolle aktualisiert: ${email} ist jetzt '${newRole}'.`);
-        });
-      }
-    }
-
-    function renderAdminDashboard() {
-      const adminContainer = document.createElement("div");
-      adminContainer.innerHTML = `
-        <h2>🔐 Admin-Dashboard</h2>
-        <form id="roleForm">
-          <label>Nutzer-E-Mail:
-            <input type="email" id="adminUserEmail" required />
-          </label>
-          <label>Rolle:
-            <select id="adminUserRole">
-              <option value="nutzer">Nutzer (nur lesen)</option>
-              <option value="schreiber">Schreiber (eigene Einträge)</option>
-              <option value="admin">Admin (alles)</option>
-            </select>
-          </label>
-          <button type="submit">Rolle setzen</button>
-          <div id="roleStatus" style="margin-top: 10px; font-size: 0.9em;"></div>
-        </form>
-        <hr>
-      `;
-      document.body.prepend(adminContainer);
-
-      document.getElementById("roleForm").addEventListener("submit", (e) => {
-        e.preventDefault();
-        const email = document.getElementById("adminUserEmail").value;
-        const role = document.getElementById("adminUserRole").value;
-        setUserRole(email, role).then(() => {
-          document.getElementById("roleStatus").textContent = `✅ Rolle für ${email} auf '${role}' gesetzt.`;
-        });
-      });
-
-      renderRoleList();
-    }
-
-    function isOwnEntry(hinzu) {
-      return hinzu === auth.currentUser?.email;
-    }
-
-    function getActionButtons(id, hinzu) {
-      if (currentUserRole === "admin" || (currentUserRole === "schreiber" && isOwnEntry(hinzu))) {
-        return `<button class="edit-btn" onclick="editEintrag('${id}')">Bearbeiten</button>
-                <button class="delete-btn" onclick="deleteEintrag('${id}')">Löschen</button>`;
-      }
-      return '<i style="color:#999;font-size:0.8em;">Keine Berechtigung</i>';
-    }
-
-    function controlFormVisibility() {
-      const form = document.getElementById("kasseForm");
-      const addBtn = document.getElementById("showLogin");
-      if (currentUserRole === "nutzer") {
-        form?.remove();
-        addBtn?.remove();
-      } else {
-        form?.classList.remove("hidden");
-        addBtn?.classList.remove("hidden");
-      }
-    }
-
-    function renderRoleInfo() {
-      const div = document.createElement("div");
-      div.style.fontSize = '0.9em';
-      div.style.color = '#555';
-      div.innerHTML = `
-        <h3>👤 Rolleninformation</h3>
-        <ul>
-          <li><strong>Nutzer</strong>: Nur lesender Zugriff</li>
-          <li><strong>Schreiber</strong>: Kann eigene Einträge hinzufügen und bearbeiten</li>
-          <li><strong>Admin</strong>: Kann alle Einträge bearbeiten/löschen und Rollen verwalten</li>
-        </ul>`;
-      document.body.appendChild(div);
-    }
-
-    onAuthStateChanged(auth, user => {
-      if (user) {
-        getUserRole(user.email).then(role => {
-          currentUserRole = role;
-          controlFormVisibility();
-          renderRoleInfo();
-          if (role === "admin") {
-            document.body.classList.add("admin");
-            renderAdminDashboard();
-            watchNewEntries();
-          }
-          if (role === "schreiber") {
-            document.body.classList.add("writer");
-          }
-          if (role === "nutzer") {
-            console.log("Nur-Lesezugriff aktiviert für Nutzerrolle");
-          }
-        });
-      }
-    });
-  </script>
+  <!-- Dein Firebase-Skript folgt direkt im Anschluss -->
+  </div>
 </body>
 </html>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { getDatabase, ref, push, onValue, remove, update, get, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAwBqdricy51uYn-a_OoqOOYuF2dgsLWIU",
+  authDomain: "kaffeekasse-8ca19.firebaseapp.com",
+  databaseURL: "https://kaffeekasse-8ca19-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "kaffeekasse-8ca19",
+  storageBucket: "kaffeekasse-8ca19.firebasestorage.app",
+  messagingSenderId: "959824393102",
+  appId: "1:959824393102:web:b6a9ca08a03fb042d5aadf"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+let currentUserRole = "nutzer";
+
+function getUserRole(email) {
+  const id = email.replace(/\./g, '_');
+  return get(ref(db, 'rollen/' + id)).then(s => s.exists() ? s.val() : "nutzer");
+}
+
+function setUserRole(email, role) {
+  const id = email.replace(/\./g, '_');
+  return set(ref(db, 'rollen/' + id), role);
+}
+
+function notifyAdmin(msg) {
+  const div = document.createElement("div");
+  div.textContent = msg;
+  div.style.cssText = "background:#ffe58f;padding:10px;margin:10px 0;border:1px solid #d4a01e;border-radius:5px;font-weight:bold;color:#333";
+  document.body.prepend(div);
+  setTimeout(() => div.remove(), 10000);
+}
+
+function renderTable(eintraege) {
+  const tbody = document.querySelector("#kassenTabelle tbody");
+  const logList = document.getElementById("logList");
+  tbody.innerHTML = "";
+  logList.innerHTML = "";
+  let gesamt = 0;
+
+  Object.entries(eintraege).forEach(([id, d]) => {
+    const realBetrag = d.typ === "Auszahlung" ? -d.betrag : d.betrag;
+    gesamt += realBetrag;
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${d.datum}</td>
+      <td>${realBetrag.toFixed(2)}</td>
+      <td>${d.typ}</td>
+      <td>${d.grund}</td>
+      <td>${d.name}</td>
+      <td>${d.hinzu}<br><small>${d.zuletztBearbeitet ? new Date(d.zuletztBearbeitet).toLocaleString() : ''}</small></td>
+      <td>${getActionButtons(id, d.hinzu)}</td>`;
+    tbody.appendChild(row);
+
+    const li = document.createElement("li");
+    li.textContent = `${d.hinzu} änderte ${d.typ} über ${d.betrag} € für "${d.grund}" am ${d.datum}`;
+    logList.appendChild(li);
+  });
+  document.getElementById("gesamt").textContent = `${gesamt.toFixed(2)} €`;
+}
+
+function getActionButtons(id, hinzu) {
+  if (currentUserRole === "admin" || (currentUserRole === "schreiber" && hinzu === auth.currentUser?.email)) {
+    return `<button onclick="editEintrag('${id}')">✏️</button> <button onclick="deleteEintrag('${id}')">🗑️</button>`;
+  }
+  return '<span style="color:#aaa">–</span>';
+}
+
+window.editEintrag = function(id) {
+  const entry = eintraege[id];
+  document.getElementById("eintragId").value = id;
+  document.getElementById("datum").value = entry.datum;
+  document.getElementById("betrag").value = entry.betrag;
+  document.getElementById("typ").value = entry.typ;
+  document.getElementById("grund").value = entry.grund;
+  document.getElementById("name").value = entry.name;
+};
+
+window.deleteEintrag = function(id) {
+  if (confirm("Wirklich löschen?")) remove(ref(db, 'eintraege/' + id));
+}
+
+const kasseForm = document.getElementById("kasseForm");
+kasseForm.addEventListener("submit", e => {
+  e.preventDefault();
+  const id = document.getElementById("eintragId").value || push(ref(db, "eintraege")).key;
+  const daten = {
+    datum: document.getElementById("datum").value,
+    betrag: parseFloat(document.getElementById("betrag").value),
+    typ: document.getElementById("typ").value,
+    grund: document.getElementById("grund").value,
+    name: document.getElementById("name").value,
+    hinzu: auth.currentUser?.email,
+    zuletztBearbeitet: new Date().toISOString()
+  };
+  update(ref(db, 'eintraege/' + id), daten);
+  kasseForm.reset();
+});
+
+const eintraege = {};
+onValue(ref(db, 'eintraege'), snapshot => {
+  Object.assign(eintraege, snapshot.val() || {});
+  renderTable(eintraege);
+});
+
+onAuthStateChanged(auth, user => {
+  if (user) {
+    getUserRole(user.email).then(role => {
+      currentUserRole = role;
+      if (role === 'admin') notifyAdmin('✅ Adminrechte aktiv.');
+      if (role === 'nutzer') {
+        document.getElementById("kasseForm")?.remove();
+        document.getElementById("showLogin")?.remove();
+      }
+    });
+  }
+});
+</script>
