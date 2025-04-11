@@ -51,7 +51,7 @@
       margin-top: -10px;
       margin-bottom: 10px;
     }
-    #kasseForm, #kassenTabelle, #logoutBtn {
+    #kasseForm, #logoutBtn, #registerForm, #loginForm {
       display: none;
     }
   </style>
@@ -61,6 +61,8 @@
 </head>
 <body>
   <h1>☕ Kaffeekasse</h1>
+
+  <button id="showLogin">➕ Eintrag hinzufügen</button>
 
   <form id="registerForm">
     <label>Neuer Benutzername (E-Mail):
@@ -151,7 +153,26 @@
     const tbody = document.querySelector("#kassenTabelle tbody");
     const gesamtAnzeige = document.getElementById("gesamt");
     const lastUser = document.getElementById("lastUser");
+    const showLogin = document.getElementById("showLogin");
     let gesamt = 0;
+
+    document.getElementById("datum").valueAsDate = new Date();
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        registerForm.style.display = "none";
+        loginForm.style.display = "none";
+        logoutBtn.style.display = "inline-block";
+        kasseForm.style.display = "block";
+        showLogin.style.display = "none";
+      }
+    });
+
+    showLogin.addEventListener("click", () => {
+      loginForm.style.display = "block";
+      registerForm.style.display = "block";
+      showLogin.style.display = "none";
+    });
 
     registerForm.addEventListener("submit", e => {
       e.preventDefault();
@@ -167,13 +188,12 @@
       const email = document.getElementById("username").value;
       const pass = document.getElementById("password").value;
       auth.signInWithEmailAndPassword(email, pass)
-        .then(userCred => {
+        .then(() => {
           registerForm.style.display = "none";
           loginForm.style.display = "none";
           logoutBtn.style.display = "inline-block";
           kasseForm.style.display = "block";
-          table.style.display = "table";
-          loadEntries();
+          showLogin.style.display = "none";
         })
         .catch(err => alert("Login fehlgeschlagen: " + err.message));
     });
@@ -218,7 +238,7 @@
       });
     }
 
-    document.getElementById("datum").valueAsDate = new Date();
+    loadEntries();
   </script>
 </body>
 </html>
