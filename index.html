@@ -151,7 +151,13 @@
       const grund = document.getElementById("grund").value;
       const name = document.getElementById("name").value;
       const user = auth.currentUser.email;
-      push(ref(db, "eintraege"), { datum, betrag, typ, grund, name, hinzu: user });
+      push(ref(db, "eintraege"), { datum, betrag, typ, grund, name, hinzu: user })
+        .then(() => {
+          console.log("✅ Eintrag erfolgreich gespeichert!");
+        })
+        .catch((error) => {
+          console.error("❌ Fehler beim Speichern:", error);
+        });
       kasseForm.reset();
       document.getElementById("datum").valueAsDate = new Date();
     });
