@@ -7,8 +7,16 @@
   <style>
     body {
       font-family: sans-serif;
-      background-color: #f4f4f4;
+      background-image: url('https://raw.githubusercontent.com/badtioop/kaffeekasse/main/image.png');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+    }
+    .overlay {
+      background-color: rgba(255, 255, 255, 0.9);
       padding: 20px;
+      border-radius: 10px;
+      margin: 20px;
     }
     h1 {
       color: #333;
@@ -55,82 +63,12 @@
       display: none;
     }
   </style>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js"></script>
-</head>
-<body>
-  <img src="image.png" alt="Kaffeekasse Header" style="width: 100%; max-height: 300px; object-fit: cover; border-radius: 10px; margin-bottom: 20px;">
-  <h1>☕ Kaffeekasse</h1>
+  <!-- Firebase Modular SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-  <button id="showLogin">➕ Eintrag hinzufügen</button>
-
-  <form id="registerForm">
-    <label>Neuer Benutzername (E-Mail):
-      <input type="email" id="regUsername" required>
-    </label>
-    <label>Passwort:
-      <input type="password" id="regPassword" required>
-    </label>
-    <button type="submit">Registrieren</button>
-  </form>
-
-  <form id="loginForm">
-    <label>Benutzername (E-Mail):
-      <input type="email" id="username" required>
-    </label>
-    <label>Passwort:
-      <input type="password" id="password" required>
-    </label>
-    <button type="submit">Einloggen</button>
-  </form>
-
-  <button id="logoutBtn">Abmelden</button>
-
-  <form id="kasseForm">
-    <label>Datum:
-      <input type="date" id="datum" required>
-    </label>
-    <label>Betrag (€):
-      <input type="number" id="betrag" step="0.01" required>
-    </label>
-    <label>Typ:
-      <select id="typ">
-        <option value="Einzahlung">Einzahlung</option>
-        <option value="Auszahlung">Auszahlung</option>
-      </select>
-    </label>
-    <label>Grund:
-      <input type="text" id="grund" required>
-    </label>
-    <label>Name (wer hat gezahlt oder erhalten?):
-      <input type="text" id="name" required>
-    </label>
-    <button type="submit">Hinzufügen</button>
-    <div class="info" id="lastUser"></div>
-  </form>
-
-  <table id="kassenTabelle">
-    <thead>
-      <tr>
-        <th>Datum</th>
-        <th>Betrag (€)</th>
-        <th>Typ</th>
-        <th>Grund</th>
-        <th>Name</th>
-        <th>Hinzugefügt von</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-    <tfoot>
-      <tr>
-        <td colspan="5">Gesamtstand</td>
-        <td id="gesamt">0.00 €</td>
-      </tr>
-    </tfoot>
-  </table>
-
-  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyAwBqdricy51uYn-a_OoqOOYuF2dgsLWIU",
       authDomain: "kaffeekasse-8ca19.firebaseapp.com",
@@ -142,9 +80,9 @@
       measurementId: "G-WZDQ33MT70"
     };
 
-    const app = firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
 
     const registerForm = document.getElementById("registerForm");
     const loginForm = document.getElementById("loginForm");
@@ -167,7 +105,7 @@
       });
     });
 
-    auth.onAuthStateChanged(user => {
+    onAuthStateChanged(auth, user => {
       if (user) {
         registerForm.style.display = "none";
         loginForm.style.display = "none";
@@ -181,7 +119,7 @@
       e.preventDefault();
       const email = document.getElementById("regUsername").value;
       const pass = document.getElementById("regPassword").value;
-      auth.createUserWithEmailAndPassword(email, pass)
+      createUserWithEmailAndPassword(auth, email, pass)
         .then(() => alert("Registrierung erfolgreich! Jetzt einloggen."))
         .catch(err => alert(err.message));
     });
@@ -190,7 +128,7 @@
       e.preventDefault();
       const email = document.getElementById("username").value;
       const pass = document.getElementById("password").value;
-      auth.signInWithEmailAndPassword(email, pass)
+      signInWithEmailAndPassword(auth, email, pass)
         .then(() => {
           registerForm.style.display = "none";
           loginForm.style.display = "none";
@@ -202,7 +140,7 @@
     });
 
     logoutBtn.addEventListener("click", () => {
-      auth.signOut().then(() => location.reload());
+      signOut(auth).then(() => location.reload());
     });
 
     kasseForm.addEventListener("submit", e => {
@@ -213,13 +151,13 @@
       const grund = document.getElementById("grund").value;
       const name = document.getElementById("name").value;
       const user = auth.currentUser.email;
-      db.ref("eintraege").push({ datum, betrag, typ, grund, name, hinzu: user });
+      push(ref(db, "eintraege"), { datum, betrag, typ, grund, name, hinzu: user });
       kasseForm.reset();
       document.getElementById("datum").valueAsDate = new Date();
     });
 
     function loadEntries() {
-      db.ref("eintraege").on("value", snapshot => {
+      onValue(ref(db, "eintraege"), snapshot => {
         tbody.innerHTML = "";
         gesamt = 0;
         snapshot.forEach(entry => {
@@ -243,5 +181,77 @@
 
     loadEntries();
   </script>
+</head>
+<body>
+  <div class="overlay">
+    <h1>☕ Kaffeekasse</h1>
+
+    <button id="showLogin">➕ Eintrag hinzufügen</button>
+
+    <form id="registerForm">
+      <label>Neuer Benutzername (E-Mail):
+        <input type="email" id="regUsername" required>
+      </label>
+      <label>Passwort:
+        <input type="password" id="regPassword" required>
+      </label>
+      <button type="submit">Registrieren</button>
+    </form>
+
+    <form id="loginForm">
+      <label>Benutzername (E-Mail):
+        <input type="email" id="username" required>
+      </label>
+      <label>Passwort:
+        <input type="password" id="password" required>
+      </label>
+      <button type="submit">Einloggen</button>
+    </form>
+
+    <button id="logoutBtn">Abmelden</button>
+
+    <form id="kasseForm">
+      <label>Datum:
+        <input type="date" id="datum" required>
+      </label>
+      <label>Betrag (€):
+        <input type="number" id="betrag" step="0.01" required>
+      </label>
+      <label>Typ:
+        <select id="typ">
+          <option value="Einzahlung">Einzahlung</option>
+          <option value="Auszahlung">Auszahlung</option>
+        </select>
+      </label>
+      <label>Grund:
+        <input type="text" id="grund" required>
+      </label>
+      <label>Name (wer hat gezahlt oder erhalten?):
+        <input type="text" id="name" required>
+      </label>
+      <button type="submit">Hinzufügen</button>
+      <div class="info" id="lastUser"></div>
+    </form>
+
+    <table id="kassenTabelle">
+      <thead>
+        <tr>
+          <th>Datum</th>
+          <th>Betrag (€)</th>
+          <th>Typ</th>
+          <th>Grund</th>
+          <th>Name</th>
+          <th>Hinzugefügt von</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5">Gesamtstand</td>
+          <td id="gesamt">0.00 €</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
 </body>
 </html>
