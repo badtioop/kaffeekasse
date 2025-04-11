@@ -62,7 +62,7 @@
 <body>
   <h1>☕ Kaffeekasse</h1>
 
-  <button id="showLogin" onclick="toggleLoginForms()">➕ Eintrag hinzufügen</button>
+  <button id="showLogin">➕ Eintrag hinzufügen</button>
 
   <form id="registerForm">
     <label>Neuer Benutzername (E-Mail):
@@ -156,11 +156,6 @@
     const showLogin = document.getElementById("showLogin");
     let gesamt = 0;
 
-    function toggleLoginForms() {
-      registerForm.style.display = "block";
-      loginForm.style.display = "block";
-    }
-
     document.getElementById("datum").valueAsDate = new Date();
 
     auth.onAuthStateChanged(user => {
@@ -171,6 +166,11 @@
         kasseForm.style.display = "block";
         showLogin.style.display = "none";
       }
+    });
+
+    showLogin.addEventListener("click", () => {
+      registerForm.style.display = "block";
+      loginForm.style.display = "block";
     });
 
     registerForm.addEventListener("submit", e => {
