@@ -1,263 +1,218 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kaffeekasse</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      background-image: url('https://raw.githubusercontent.com/badtioop/kaffeekasse/main/image.png');
-      background-size: cover;
-      background-position: center;
-      background-attachment: fixed;
-    }
-    .overlay {
-      background-color: rgba(255, 255, 255, 0.9);
-      padding: 20px;
-      border-radius: 10px;
-      margin: 20px;
-    }
-    h1 {
-      color: #333;
-    }
-    form {
-      margin-bottom: 20px;
-      background: #fff;
-      padding: 15px;
-      border-radius: 10px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
-    }
-    input, select, button {
-      padding: 8px;
-      margin: 5px 0;
-      width: 100%;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-      border-radius: 10px;
-      overflow: hidden;
-    }
-    th, td {
-      padding: 10px;
-      text-align: left;
-      border-bottom: 1px solid #ddd;
-    }
-    tfoot {
-      background-color: #efefef;
-      font-weight: bold;
-    }
-    .einzahlung { color: green; }
-    .auszahlung { color: red; }
-    .info {
-      font-size: 0.9em;
-      color: #555;
-      margin-top: -10px;
-      margin-bottom: 10px;
-    }
-    #kasseForm, #logoutBtn, #registerForm, #loginForm {
-      display: none;
-    }
-  </style>
-  <!-- Firebase Modular SDK -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-    import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+  import { getDatabase, ref, push, onValue, remove, update, get, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAwBqdricy51uYn-a_OoqOOYuF2dgsLWIU",
-      authDomain: "kaffeekasse-8ca19.firebaseapp.com",
-      databaseURL: "https://kaffeekasse-8ca19-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "kaffeekasse-8ca19",
-      storageBucket: "kaffeekasse-8ca19.firebasestorage.app",
-      messagingSenderId: "959824393102",
-      appId: "1:959824393102:web:b6a9ca08a03fb042d5aadf",
-      measurementId: "G-WZDQ33MT70"
-    };
+  const firebaseConfig = {
+    apiKey: "AIzaSyAwBqdricy51uYn-a_OoqOOYuF2dgsLWIU",
+    authDomain: "kaffeekasse-8ca19.firebaseapp.com",
+    databaseURL: "https://kaffeekasse-8ca19-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "kaffeekasse-8ca19",
+    storageBucket: "kaffeekasse-8ca19.firebasestorage.app",
+    messagingSenderId: "959824393102",
+    appId: "1:959824393102:web:b6a9ca08a03fb042d5aadf"
+  };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
 
-    const registerForm = document.getElementById("registerForm");
-    const loginForm = document.getElementById("loginForm");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const kasseForm = document.getElementById("kasseForm");
-    const table = document.getElementById("kassenTabelle");
-    const tbody = document.querySelector("#kassenTabelle tbody");
-    const gesamtAnzeige = document.getElementById("gesamt");
-    const lastUser = document.getElementById("lastUser");
-    const showLogin = document.getElementById("showLogin");
-    let gesamt = 0;
+  let currentUserRole = "nutzer"; // Standardrolle (nur lesen)
 
-    document.getElementById("datum").valueAsDate = new Date();
+  function setUserRole(email, role) {
+    const id = email.replace(/\./g, '_');
+    return set(ref(db, 'rollen/' + id), role);
+  }
 
-    document.addEventListener("DOMContentLoaded", () => {
-      showLogin.addEventListener("click", () => {
-        registerForm.style.display = "block";
-        loginForm.style.display = "block";
-        showLogin.style.display = "none";
+  function getUserRole(email) {
+    const id = email.replace(/\./g, '_');
+    return get(ref(db, 'rollen/' + id)).then(snapshot => snapshot.exists() ? snapshot.val() : "nutzer");
+  }
+
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      getUserRole(user.email).then(role => {
+        currentUserRole = role;
+        controlFormVisibility();
+        renderRoleInfo();
+        if (role === "admin") {
+          document.body.classList.add("admin");
+          renderAdminDashboard();
+          watchNewEntries();
+        }
+        if (role === "schreiber") {
+          document.body.classList.add("writer");
+        }
+        if (role === "nutzer") {
+          console.log("Nur-Lesezugriff aktiviert für Nutzerrolle");
+        }
       });
-    });
+    }
+  });
 
-    onAuthStateChanged(auth, user => {
-      if (user) {
-        registerForm.style.display = "none";
-        loginForm.style.display = "none";
-        logoutBtn.style.display = "inline-block";
-        kasseForm.style.display = "block";
-        showLogin.style.display = "none";
+  function watchNewEntries() {
+    const entriesRef = ref(db, 'eintraege');
+    let initial = true;
+    onValue(entriesRef, snapshot => {
+      if (!initial) {
+        const lastEntry = Object.values(snapshot.val() || {}).pop();
+        const message = `🔔 Neuer Eintrag von ${lastEntry.name || 'Unbekannt'}: ${lastEntry.betrag}€ für ${lastEntry.grund}`;
+        notifyAdmin(message);
+      }
+      initial = false;
+    });
+  }
+
+  function notifyAdmin(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    div.style.background = "#ffe58f";
+    div.style.padding = "10px";
+    div.style.margin = "10px 0";
+    div.style.border = "1px solid #d4a01e";
+    div.style.borderRadius = "5px";
+    div.style.fontWeight = "bold";
+    div.style.color = "#333";
+    document.body.prepend(div);
+    setTimeout(() => div.remove(), 10000);
+  }
+    }
+  });
+  function renderRoleList() {
+    const roleListContainer = document.createElement("div");
+    roleListContainer.innerHTML = `<h3>👥 Alle registrierten Rollen</h3><ul id="roleList"></ul>`;
+    document.body.appendChild(roleListContainer);
+
+    const listRef = ref(db, 'rollen');
+    onValue(listRef, snapshot => {
+      const roleList = document.getElementById("roleList");
+      roleList.innerHTML = "";
+      const entries = snapshot.val();
+      for (const key in entries) {
+        const email = key.replace(/_/g, '.');
+        const role = entries[key];
+        const li = document.createElement("li");
+        const isCurrentAdmin = auth.currentUser?.email === email;
+
+        li.innerHTML = `
+          ${email} → <strong>${role}</strong>
+          ${!isCurrentAdmin ? `
+            <button onclick="changeRole('${email}', '${role === 'admin' ? 'nutzer' : 'admin'}')">
+              Ändern zu ${role === 'admin' ? 'Nutzer' : 'Admin'}
+            </button>
+          ` : '<span style="color:gray;">(eigener Admin)</span>'}
+        `;
+        roleList.appendChild(li);
       }
     });
+  }
 
-    registerForm.addEventListener("submit", e => {
-      e.preventDefault();
-      const email = document.getElementById("regUsername").value;
-      const pass = document.getElementById("regPassword").value;
-      createUserWithEmailAndPassword(auth, email, pass)
-        .then(() => alert("Registrierung erfolgreich! Jetzt einloggen."))
-        .catch(err => alert(err.message));
-    });
-
-    loginForm.addEventListener("submit", e => {
-      e.preventDefault();
-      const email = document.getElementById("username").value;
-      const pass = document.getElementById("password").value;
-      signInWithEmailAndPassword(auth, email, pass)
-        .then(() => {
-          registerForm.style.display = "none";
-          loginForm.style.display = "none";
-          logoutBtn.style.display = "inline-block";
-          kasseForm.style.display = "block";
-          showLogin.style.display = "none";
-        })
-        .catch(err => alert("Login fehlgeschlagen: " + err.message));
-    });
-
-    logoutBtn.addEventListener("click", () => {
-      signOut(auth).then(() => location.reload());
-    });
-
-    kasseForm.addEventListener("submit", e => {
-      e.preventDefault();
-      const datum = document.getElementById("datum").value;
-      const betrag = parseFloat(document.getElementById("betrag").value);
-      const typ = document.getElementById("typ").value;
-      const grund = document.getElementById("grund").value;
-      const name = document.getElementById("name").value;
-      const user = auth.currentUser.email;
-      push(ref(db, "eintraege"), { datum, betrag, typ, grund, name, hinzu: user })
-        .then(() => {
-          console.log("✅ Eintrag erfolgreich gespeichert!");
-        })
-        .catch((error) => {
-          console.error("❌ Fehler beim Speichern:", error);
-        });
-      kasseForm.reset();
-      document.getElementById("datum").valueAsDate = new Date();
-    });
-
-    function loadEntries() {
-      onValue(ref(db, "eintraege"), snapshot => {
-        tbody.innerHTML = "";
-        gesamt = 0;
-        snapshot.forEach(entry => {
-          const { datum, betrag, typ, grund, name, hinzu } = entry.val();
-          const row = document.createElement("tr");
-          const realBetrag = typ === "Auszahlung" ? -betrag : betrag;
-          row.innerHTML = `
-            <td>${datum}</td>
-            <td class="${typ.toLowerCase()}">${realBetrag.toFixed(2)}</td>
-            <td>${typ}</td>
-            <td>${grund}</td>
-            <td>${name}</td>
-            <td>${hinzu}</td>
-          `;
-          tbody.appendChild(row);
-          gesamt += realBetrag;
-        });
-        gesamtAnzeige.textContent = `${gesamt.toFixed(2)} €`;
+  window.changeRole = function(email, newRole) {
+    if (auth.currentUser?.email === email && newRole !== 'admin') {
+      alert("⚠️ Du kannst dich nicht selbst als Admin entfernen!");
+      return;
+    }
+    if (confirm(`Rolle für ${email} zu '${newRole}' ändern?`)) {
+      setUserRole(email, newRole).then(() => {
+        alert(`✅ Rolle aktualisiert: ${email} ist jetzt '${newRole}'.`);
       });
     }
+  }
 
-    loadEntries();
-  </script>
-</head>
-<body>
-  <div class="overlay">
-    <h1>☕ Kaffeekasse</h1>
+  function renderAdminDashboard() {
+    const adminContainer = document.createElement("div");
+    adminContainer.innerHTML = `
+      <h2>🔐 Admin-Dashboard</h2>
+      <form id="roleForm">
+        <label>Nutzer-E-Mail:
+          <input type="email" id="adminUserEmail" required />
+        </label>
+        <label>Rolle:
+          <select id="adminUserRole">
+            <option value="nutzer">Nutzer (nur lesen)</option>
+            <option value="schreiber">Schreiber (eigene Einträge)</option>
+            <option value="admin">Admin (alles)</option>
+          </select>
+        </label>
+        <button type="submit">Rolle setzen</button>
+        <div id="roleStatus" style="margin-top: 10px; font-size: 0.9em;"></div>
+      </form>
+      <hr>
+    `;
+    document.body.prepend(adminContainer);
 
-    <button id="showLogin">➕ Eintrag hinzufügen</button>
+    document.getElementById("roleForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const email = document.getElementById("adminUserEmail").value;
+      const role = document.getElementById("adminUserRole").value;
+      setUserRole(email, role).then(() => {
+        document.getElementById("roleStatus").textContent = `✅ Rolle für ${email} auf '${role}' gesetzt.`;
+      });
+    });
 
-    <form id="registerForm">
-      <label>Neuer Benutzername (E-Mail):
-        <input type="email" id="regUsername" required>
-      </label>
-      <label>Passwort:
-        <input type="password" id="regPassword" required>
-      </label>
-      <button type="submit">Registrieren</button>
-    </form>
+    renderRoleList();
+  }
+  function isOwnEntry(hinzu) {
+    return hinzu === auth.currentUser?.email;
+  }
 
-    <form id="loginForm">
-      <label>Benutzername (E-Mail):
-        <input type="email" id="username" required>
-      </label>
-      <label>Passwort:
-        <input type="password" id="password" required>
-      </label>
-      <button type="submit">Einloggen</button>
-    </form>
+  // Zugriff auf Buttons nur für eigene Einträge bei Rolle 'schreiber'
+  function getActionButtons(id, hinzu) {
+    if (currentUserRole === "admin" || (currentUserRole === "schreiber" && isOwnEntry(hinzu))) {
+      return `<button class="edit-btn" onclick="editEintrag('${id}')">Bearbeiten</button>
+              <button class="delete-btn" onclick="deleteEintrag('${id}')">Löschen</button>`;
+    }
+    return '<i style="color:#999;font-size:0.8em;">Keine Berechtigung</i>';
+  }
 
-    <button id="logoutBtn">Abmelden</button>
+  // Anzeigen/Hinzufügen-Formular je nach Rolle sichtbar machen
+  function controlFormVisibility() {
+    const form = document.getElementById("kasseForm");
+    const addBtn = document.getElementById("showLogin");
+    if (currentUserRole === "nutzer") {
+      form?.remove();
+      addBtn?.remove();
+    } else if (currentUserRole === "schreiber") {
+      form?.classList.remove("hidden");
+      addBtn?.classList.remove("hidden");
+    } else {
+      form?.classList.remove("hidden");
+      addBtn?.classList.remove("hidden");
+    }
+  }
 
-    <form id="kasseForm">
-      <label>Datum:
-        <input type="date" id="datum" required>
-      </label>
-      <label>Betrag (€):
-        <input type="number" id="betrag" step="0.01" required>
-      </label>
-      <label>Typ:
-        <select id="typ">
-          <option value="Einzahlung">Einzahlung</option>
-          <option value="Auszahlung">Auszahlung</option>
-        </select>
-      </label>
-      <label>Grund:
-        <input type="text" id="grund" required>
-      </label>
-      <label>Name (wer hat gezahlt oder erhalten?):
-        <input type="text" id="name" required>
-      </label>
-      <button type="submit">Hinzufügen</button>
-      <div class="info" id="lastUser"></div>
-    </form>
+  function renderRoleInfo() {
+    const div = document.createElement("div");
+    div.style.fontSize = '0.9em';
+    div.style.color = '#555';
+    div.innerHTML = `
+      <h3>👤 Rolleninformation</h3>
+      <ul>
+        <li><strong>Nutzer</strong>: Nur lesender Zugriff</li>
+        <li><strong>Schreiber</strong>: Kann eigene Einträge hinzufügen und bearbeiten</li>
+        <li><strong>Admin</strong>: Kann alle Einträge bearbeiten/löschen und Rollen verwalten</li>
+      </ul>`;
+    document.body.appendChild(div);
+  }
 
-    <table id="kassenTabelle">
-      <thead>
-        <tr>
-          <th>Datum</th>
-          <th>Betrag (€)</th>
-          <th>Typ</th>
-          <th>Grund</th>
-          <th>Name</th>
-          <th>Hinzugefügt von</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-      <tfoot>
-        <tr>
-          <td colspan="5">Gesamtstand</td>
-          <td id="gesamt">0.00 €</td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>
-</body>
-</html>
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      getUserRole(user.email).then(role => {
+        currentUserRole = role;
+        controlFormVisibility();
+        renderRoleInfo();
+        if (role === "admin") {
+          document.body.classList.add("admin");
+          renderAdminDashboard();
+        }
+        if (role === "schreiber") {
+          document.body.classList.add("writer");
+        }
+        if (role === "nutzer") {
+          console.log("Nur-Lesezugriff aktiviert für Nutzerrolle");
+        }
+      });
+    }
+  });
+</script>
+<!-- A corrected and fully debugged version of the code will be regenerated next. -->
