@@ -158,13 +158,13 @@
 
     document.getElementById("datum").valueAsDate = new Date();
 
-    window.onload = () => {
+    document.addEventListener("DOMContentLoaded", () => {
       showLogin.addEventListener("click", () => {
         registerForm.style.display = "block";
         loginForm.style.display = "block";
         showLogin.style.display = "none";
       });
-    };
+    });
 
     auth.onAuthStateChanged(user => {
       if (user) {
