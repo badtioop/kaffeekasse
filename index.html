@@ -55,13 +55,16 @@
       display: none;
     }
   </style>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js"></script>
 </head>
 <body>
   <h1>☕ Kaffeekasse</h1>
 
   <form id="registerForm">
-    <label>Neuer Benutzername:
-      <input type="text" id="regUsername" required>
+    <label>Neuer Benutzername (E-Mail):
+      <input type="email" id="regUsername" required>
     </label>
     <label>Passwort:
       <input type="password" id="regPassword" required>
@@ -70,8 +73,8 @@
   </form>
 
   <form id="loginForm">
-    <label>Benutzername:
-      <input type="text" id="username" required>
+    <label>Benutzername (E-Mail):
+      <input type="email" id="username" required>
     </label>
     <label>Passwort:
       <input type="password" id="password" required>
@@ -125,135 +128,97 @@
   </table>
 
   <script>
-    const loginForm = document.getElementById("loginForm");
+    const firebaseConfig = {
+      apiKey: "AIzaSyAwBqdricy51uYn-a_OoqOOYuF2dgsLWIU",
+      authDomain: "kaffeekasse-8ca19.firebaseapp.com",
+      databaseURL: "https://kaffeekasse-8ca19-default-rtdb.firebaseio.com",
+      projectId: "kaffeekasse-8ca19",
+      storageBucket: "kaffeekasse-8ca19.firebasestorage.app",
+      messagingSenderId: "959824393102",
+      appId: "1:959824393102:web:b6a9ca08a03fb042d5aadf",
+      measurementId: "G-WZDQ33MT70"
+    };
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
     const registerForm = document.getElementById("registerForm");
-    const usernameInput = document.getElementById("username");
-    const passwordInput = document.getElementById("password");
-    const regUsername = document.getElementById("regUsername");
-    const regPassword = document.getElementById("regPassword");
+    const loginForm = document.getElementById("loginForm");
     const logoutBtn = document.getElementById("logoutBtn");
-    const form = document.getElementById("kasseForm");
+    const kasseForm = document.getElementById("kasseForm");
+    const table = document.getElementById("kassenTabelle");
     const tbody = document.querySelector("#kassenTabelle tbody");
     const gesamtAnzeige = document.getElementById("gesamt");
     const lastUser = document.getElementById("lastUser");
-    const table = document.getElementById("kassenTabelle");
-
     let gesamt = 0;
-    let currentUser = localStorage.getItem("kaffeeUser") || "";
-    let userDB = JSON.parse(localStorage.getItem("userDB")) || {};
 
-    if (currentUser) {
-      showKasse(currentUser);
-    }
-
-    registerForm.addEventListener("submit", function(e) {
+    registerForm.addEventListener("submit", e => {
       e.preventDefault();
-      const user = regUsername.value.trim();
-      const pass = regPassword.value.trim();
-      if (!user || !pass) return;
-      userDB[user] = pass;
-      localStorage.setItem("userDB", JSON.stringify(userDB));
-      alert("Registrierung erfolgreich! Jetzt bitte einloggen.");
-      registerForm.reset();
+      const email = document.getElementById("regUsername").value;
+      const pass = document.getElementById("regPassword").value;
+      auth.createUserWithEmailAndPassword(email, pass)
+        .then(() => alert("Registrierung erfolgreich! Jetzt einloggen."))
+        .catch(err => alert(err.message));
     });
 
-    loginForm.addEventListener("submit", function(e) {
+    loginForm.addEventListener("submit", e => {
       e.preventDefault();
-      const username = usernameInput.value.trim();
-      const password = passwordInput.value.trim();
-
-      if (userDB[username] && userDB[username] === password) {
-        currentUser = username;
-        localStorage.setItem("kaffeeUser", currentUser);
-        showKasse(currentUser);
-      } else {
-        alert("Login fehlgeschlagen. Bitte Benutzername und Passwort prüfen.");
-      }
+      const email = document.getElementById("username").value;
+      const pass = document.getElementById("password").value;
+      auth.signInWithEmailAndPassword(email, pass)
+        .then(userCred => {
+          registerForm.style.display = "none";
+          loginForm.style.display = "none";
+          logoutBtn.style.display = "inline-block";
+          kasseForm.style.display = "block";
+          table.style.display = "table";
+          loadEntries();
+        })
+        .catch(err => alert("Login fehlgeschlagen: " + err.message));
     });
 
-    logoutBtn.addEventListener("click", function() {
-      localStorage.removeItem("kaffeeUser");
-      location.reload();
+    logoutBtn.addEventListener("click", () => {
+      auth.signOut().then(() => location.reload());
     });
 
-    function showKasse(user) {
-      loginForm.style.display = "none";
-      registerForm.style.display = "none";
-      form.style.display = "block";
-      table.style.display = "table";
-      logoutBtn.style.display = "inline-block";
-    }
-
-    document.getElementById("datum").valueAsDate = new Date();
-
-    function speichern() {
-      const daten = [];
-      tbody.querySelectorAll('tr').forEach(row => {
-        const zellen = row.querySelectorAll('td');
-        daten.push({
-          datum: zellen[0].innerText,
-          betrag: zellen[1].innerText,
-          typ: zellen[2].innerText,
-          grund: zellen[3].innerText,
-          name: zellen[4].innerText,
-          hinzu: zellen[5].innerText
-        });
-      });
-      localStorage.setItem('kaffeekasse', JSON.stringify(daten));
-      localStorage.setItem('saldo', gesamt);
-    }
-
-    function laden() {
-      const daten = JSON.parse(localStorage.getItem('kaffeekasse')) || [];
-      gesamt = parseFloat(localStorage.getItem('saldo')) || 0;
-      daten.forEach(eintrag => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${eintrag.datum}</td>
-          <td class="${eintrag.typ.toLowerCase()}">${eintrag.betrag}</td>
-          <td>${eintrag.typ}</td>
-          <td>${eintrag.grund}</td>
-          <td>${eintrag.name}</td>
-          <td>${eintrag.hinzu}</td>
-        `;
-        tbody.appendChild(row);
-      });
-      gesamtAnzeige.textContent = `${gesamt.toFixed(2)} €`;
-    }
-
-    form.addEventListener("submit", function(e) {
+    kasseForm.addEventListener("submit", e => {
       e.preventDefault();
-
       const datum = document.getElementById("datum").value;
       const betrag = parseFloat(document.getElementById("betrag").value);
       const typ = document.getElementById("typ").value;
       const grund = document.getElementById("grund").value;
       const name = document.getElementById("name").value;
-
-      const row = document.createElement("tr");
-      const wirklicherBetrag = typ === "Auszahlung" ? -betrag : betrag;
-
-      row.innerHTML = `
-        <td>${datum}</td>
-        <td class="${typ.toLowerCase()}" >${wirklicherBetrag.toFixed(2)}</td>
-        <td>${typ}</td>
-        <td>${grund}</td>
-        <td>${name}</td>
-        <td>${currentUser}</td>
-      `;
-
-      tbody.appendChild(row);
-      gesamt += wirklicherBetrag;
-      gesamtAnzeige.textContent = `${gesamt.toFixed(2)} €`;
-
-      lastUser.textContent = `Letzter Eintrag hinzugefügt von: ${currentUser}`;
-
-      speichern();
-      form.reset();
+      const user = auth.currentUser.email;
+      db.ref("eintraege").push({ datum, betrag, typ, grund, name, hinzu: user });
+      kasseForm.reset();
       document.getElementById("datum").valueAsDate = new Date();
     });
 
-    window.onload = laden;
+    function loadEntries() {
+      db.ref("eintraege").on("value", snapshot => {
+        tbody.innerHTML = "";
+        gesamt = 0;
+        snapshot.forEach(entry => {
+          const { datum, betrag, typ, grund, name, hinzu } = entry.val();
+          const row = document.createElement("tr");
+          const realBetrag = typ === "Auszahlung" ? -betrag : betrag;
+          row.innerHTML = `
+            <td>${datum}</td>
+            <td class="${typ.toLowerCase()}">${realBetrag.toFixed(2)}</td>
+            <td>${typ}</td>
+            <td>${grund}</td>
+            <td>${name}</td>
+            <td>${hinzu}</td>
+          `;
+          tbody.appendChild(row);
+          gesamt += realBetrag;
+        });
+        gesamtAnzeige.textContent = `${gesamt.toFixed(2)} €`;
+      });
+    }
+
+    document.getElementById("datum").valueAsDate = new Date();
   </script>
 </body>
 </html>
