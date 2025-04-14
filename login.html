@@ -101,14 +101,23 @@ if (logoutBtn) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  const isLoginPage = location.pathname.includes('login.html');
+
   auth.onAuthStateChanged((user) => {
     const logoutEl = document.getElementById('nav-logout');
+
     if (user) {
       if (logoutEl) logoutEl.style.display = 'inline-block';
-      loadSection('dashboard');
+      if (isLoginPage) {
+        location.href = './index.html';
+      } else {
+        loadSection('dashboard');
+      }
     } else {
       if (logoutEl) logoutEl.style.display = 'none';
-      main.innerHTML = '<section><h2>Login erforderlich</h2><p><a href="login.html">Hier anmelden</a></p></section>';
+      if (!isLoginPage) {
+        window.location.href = './login.html';
+      }
     }
   });
 });
