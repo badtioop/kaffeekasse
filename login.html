@@ -11,6 +11,8 @@ const nav = document.querySelector('nav');
 const logoutBtn = document.getElementById('nav-logout');
 const darkToggle = document.getElementById('darkmode-toggle');
 
+if (logoutBtn) logoutBtn.style.display = 'none';
+
 function loadSection(id) {
   if (isTransitioning || id === currentSection) return;
   isTransitioning = true;
