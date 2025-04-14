@@ -10,9 +10,40 @@
   <main>
     <section id="dashboard">
       <h2>📊 Dashboard</h2>
-      <article>
-        <p>Hier ist der Überblick deiner Kaffeekasse.</p>
-      </article>
+
+      <form id="booking-form">
+        <label for="datum">Datum:</label>
+        <input type="date" name="datum" required value="" />
+
+        <label for="amount">Betrag (€):</label>
+        <input type="number" step="0.01" name="amount" required />
+
+        <label>Art:</label>
+        <label><input type="radio" name="type" value="einzahlung" checked /> Einzahlung</label>
+        <label><input type="radio" name="type" value="auszahlung" /> Auszahlung</label>
+
+        <label for="grund">Grund:</label>
+        <input type="text" name="grund" required />
+
+        <label for="name">Name:</label>
+        <input type="text" name="name" required />
+
+        <button type="submit">✔️ Buchen</button>
+      </form>
+
+      <h3>💰 Aktueller Saldo: <span id="saldo">0.00 €</span></h3>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Datum</th>
+            <th>Betrag</th>
+            <th>Grund</th>
+            <th>Name</th>
+          </tr>
+        </thead>
+        <tbody id="booking-list"></tbody>
+      </table>
     </section>
   </main>
 </body>
