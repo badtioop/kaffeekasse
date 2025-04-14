@@ -6,6 +6,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kaffeekasse</title>
   <link rel="stylesheet" href="./styles.css" />
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+    import { getDatabase } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAwBqdricy51uYn-a_OoqOOYuF2dgsLWIU",
+      authDomain: "kaffeekasse-8ca19.firebaseapp.com",
+      projectId: "kaffeekasse-8ca19",
+      storageBucket: "kaffeekasse-8ca19.appspot.com",
+      messagingSenderId: "959824393102",
+      appId: "1:959824393102:web:b6a9ca08a03fb042d5aadf",
+      measurementId: "G-WZDQ33MT70",
+      databaseURL: "https://kaffeekasse-8ca19-default-rtdb.europe-west1.firebasedatabase.app/"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    window.firebaseAuth = getAuth(app);
+    window.firebaseDB = getDatabase(app);
+  </script>
+
+  <!-- App -->
   <script src="./app.js" defer></script>
 </head>
 <body>
