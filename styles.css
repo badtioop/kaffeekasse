@@ -1,0 +1,112 @@
+/* File: docs/styles.css */
+
+:root {
+  --bg: #ffffff;
+  --text: #1a1a1a;
+  --primary: #0d6efd;
+  --accent: #e0f0ff;
+  --card: #f9f9f9;
+  --danger: #dc3545;
+}
+
+[data-theme="dark"] {
+  --bg: #121212;
+  --text: #f1f1f1;
+  --accent: #1e3a8a;
+  --card: #1f1f1f;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background: var(--card);
+  border-bottom: 1px solid #ccc;
+}
+
+nav h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.nav-links, .nav-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.nav-link {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--text);
+  font-size: 1rem;
+  border-radius: 0.5rem;
+}
+
+.nav-link.active {
+  background: var(--primary);
+  color: white;
+}
+
+button {
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.4rem;
+  border: none;
+  background: var(--primary);
+  color: white;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background: #084298;
+}
+
+main {
+  padding: 2rem;
+}
+
+section {
+  max-width: 800px;
+  margin: auto;
+  background: var(--card);
+  padding: 2rem;
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Mobile Navigation */
+.burger {
+  display: none;
+  font-size: 1.5rem;
+  background: none;
+  border: none;
+  color: var(--text);
+}
+
+@media (max-width: 768px) {
+  .burger {
+    display: block;
+  }
+  .nav-links {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+  }
+  nav.active .nav-links {
+    display: flex;
+  }
+}

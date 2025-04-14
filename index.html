@@ -1,0 +1,29 @@
+<!-- File: docs/index.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kaffeekasse</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div id="app">
+    <nav>
+      <h1>Kaffeekasse ☕</h1>
+      <button class="burger" aria-label="Menü öffnen"><span class="burger-icon">☰</span></button>
+      <div class="nav-links">
+        <a href="#" class="nav-link active" data-target="dashboard" aria-label="Dashboard">📊 Dashboard</a>
+        <a href="#" class="nav-link" data-target="history" aria-label="Historie">🕒 Historie</a>
+        <a href="#" class="nav-link" data-target="admin-panel" aria-label="Admin Panel">🛠 Admin</a>
+      </div>
+      <div class="nav-actions">
+        <button id="darkmode-toggle" aria-label="Darkmode umschalten">🌓</button>
+        <button id="nav-logout" aria-label="Abmelden">🚪 Logout</button>
+      </div>
+    </nav>
+    <main></main>
+  </div>
+</body>
+</html>
