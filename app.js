@@ -11,6 +11,8 @@ const nav = document.querySelector('nav');
 const logoutBtn = document.getElementById('nav-logout');
 const darkToggle = document.getElementById('darkmode-toggle');
 
+if (logoutBtn) logoutBtn.style.display = 'none';
+
 function loadSection(id) {
   if (isTransitioning || id === currentSection) return;
   isTransitioning = true;
@@ -80,7 +82,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// Dark Mode Umschalten
 if (darkToggle) {
   darkToggle.addEventListener('click', () => {
     const theme = document.documentElement.getAttribute('data-theme');
@@ -88,26 +89,35 @@ if (darkToggle) {
   });
 }
 
-// Firebase Auth Integration
 const auth = window.firebaseAuth;
 
 if (logoutBtn) {
   logoutBtn.addEventListener('click', () => {
     auth.signOut().then(() => {
       alert('Du wurdest abgemeldet.');
-      location.reload();
+      window.location.href = './login.html';
     });
   });
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  const isLoginPage = location.pathname.includes('login.html');
+
   auth.onAuthStateChanged((user) => {
+    const logoutEl = document.getElementById('nav-logout');
+
     if (user) {
-      document.getElementById('nav-logout').style.display = 'inline-block';
-      loadSection('dashboard');
+      if (logoutEl) logoutEl.style.display = 'inline-block';
+      if (isLoginPage) {
+        location.href = './index.html';
+      } else {
+        loadSection('dashboard');
+      }
     } else {
-      main.innerHTML = '<section><h2>Login erforderlich</h2><p>Bitte melde dich an, um fortzufahren.</p></section>';
-      document.getElementById('nav-logout').style.display = 'none';
+      if (logoutEl) logoutEl.style.display = 'none';
+      if (!isLoginPage) {
+        window.location.href = './login.html';
+      }
     }
   });
 });
