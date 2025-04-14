@@ -4,35 +4,68 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kaffeekasse Login</title>
+  <title>Login</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <main>
     <section id="auth">
-      <h2>🔐 Anmeldung</h2>
+      <h2>🔐 Login</h2>
 
       <form id="login-form">
-        <h3>Login</h3>
-        <label for="login-email">E-Mail</label>
-        <input type="email" id="login-email" required />
-        <label for="login-password">Passwort</label>
-        <input type="password" id="login-password" required />
-        <button type="submit">Anmelden</button>
-        <button type="button" id="forgot-password">Passwort vergessen?</button>
-      </form>
+        <label for="email">E-Mail</label>
+        <input type="email" id="email" required />
 
-      <form id="register-form">
-        <h3>Registrieren</h3>
-        <label for="register-email">E-Mail</label>
-        <input type="email" id="register-email" required />
-        <label for="register-password">Passwort</label>
-        <input type="password" id="register-password" required />
-        <button type="submit">Registrieren</button>
+        <label for="password">Passwort</label>
+        <input type="password" id="password" required />
+
+        <button type="submit">Anmelden</button>
+        <button type="button" id="register-btn">Neu registrieren</button>
+
+        <p id="login-message"></p>
       </form>
     </section>
   </main>
 
-  <script type="module" src="./app.js"></script>
+  <script type="module">
+    import {
+      signInWithEmailAndPassword,
+      createUserWithEmailAndPassword
+    } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+
+    const auth = window.firebaseAuth;
+    const form = document.getElementById('login-form');
+    const message = document.getElementById('login-message');
+    const register = document.getElementById('register-btn');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = form.email.value;
+      const password = form.password.value;
+
+      signInWithEmailAndPassword(auth, email, password)
+        .then(() => {
+          message.textContent = 'Erfolgreich eingeloggt.';
+          location.href = './index.html';
+        })
+        .catch(err => {
+          message.textContent = 'Fehler: ' + err.message;
+        });
+    });
+
+    register.addEventListener('click', () => {
+      const email = form.email.value;
+      const password = form.password.value;
+
+      createUserWithEmailAndPassword(auth, email, password)
+        .then(() => {
+          message.textContent = 'Registrierung erfolgreich. Eingeloggt.';
+          location.href = './index.html';
+        })
+        .catch(err => {
+          message.textContent = 'Fehler: ' + err.message;
+        });
+    });
+  </script>
 </body>
 </html>
