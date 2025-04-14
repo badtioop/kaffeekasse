@@ -7,7 +7,7 @@
   <title>Kaffeekasse</title>
   <link rel="stylesheet" href="./styles.css" />
 
-  <!-- Firebase SDK -->
+  <!-- Firebase SDK + Global Setup -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
     import { getAuth } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
@@ -29,8 +29,8 @@
     window.firebaseDB = getDatabase(app);
   </script>
 
-  <!-- App JS -->
-  <script src="./app.js" defer></script>
+  <!-- App-Code als Modul laden (damit Zugriff auf window.firebaseAuth möglich ist) -->
+  <script type="module" src="./app.js"></script>
 
   <style>
     #nav-logout {
