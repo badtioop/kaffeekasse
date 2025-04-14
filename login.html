@@ -1,0 +1,64 @@
+<!-- File: docs/login.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main>
+    <section id="login">
+      <h2>🔐 Login</h2>
+      <form id="login-form">
+        <label for="email">E-Mail</label>
+        <input type="email" id="email" required />
+
+        <label for="password">Passwort</label>
+        <input type="password" id="password" required />
+
+        <button type="submit">Anmelden</button>
+        <button type="button" id="register">Registrieren</button>
+        <p id="login-message"></p>
+      </form>
+    </section>
+  </main>
+
+  <script type="module">
+    import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+
+    const auth = window.firebaseAuth;
+    const form = document.getElementById('login-form');
+    const msg = document.getElementById('login-message');
+    const registerBtn = document.getElementById('register');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = form.email.value;
+      const password = form.password.value;
+      signInWithEmailAndPassword(auth, email, password)
+        .then(() => {
+          msg.textContent = 'Erfolgreich eingeloggt!';
+          location.href = './index.html';
+        })
+        .catch((err) => {
+          msg.textContent = 'Fehler: ' + err.message;
+        });
+    });
+
+    registerBtn.addEventListener('click', () => {
+      const email = form.email.value;
+      const password = form.password.value;
+      createUserWithEmailAndPassword(auth, email, password)
+        .then(() => {
+          msg.textContent = 'Registrierung erfolgreich! Du bist jetzt eingeloggt.';
+          location.href = './index.html';
+        })
+        .catch((err) => {
+          msg.textContent = 'Fehler: ' + err.message;
+        });
+    });
+  </script>
+</body>
+</html>
