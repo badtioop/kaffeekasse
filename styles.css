@@ -1,116 +1,120 @@
-/* File: docs/styles.css */
+// File: docs/app.js
 
-:root {
-  --bg: #ffffff;
-  --text: #1a1a1a;
-  --primary: #0d6efd;
-  --accent: #e0f0ff;
-  --card: #f9f9f9;
-  --danger: #dc3545;
-}
+import {
+  ref,
+  push,
+  onValue
+} from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js';
 
-[data-theme="dark"] {
-  --bg: #121212;
-  --text: #f1f1f1;
-  --accent: #1e3a8a;
-  --card: #1f1f1f;
-}
+const auth = window.firebaseAuth;
+const db = window.firebaseDB;
 
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
-  background-color: var(--bg);
-  color: var(--text);
-  transition: background 0.3s ease, color 0.3s ease;
-}
+window.addEventListener('DOMContentLoaded', () => {
+  const main = document.querySelector('main');
+  const logoutBtn = document.getElementById('nav-logout');
+  const darkToggle = document.getElementById('darkmode-toggle');
+  const burger = document.querySelector('.burger');
+  const nav = document.querySelector('nav');
+  const navButtons = document.querySelectorAll('.nav-link');
 
-#nav-logout {
-  display: none;
-}
+  if (logoutBtn) logoutBtn.style.display = 'none';
 
-nav {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem;
-  background: var(--card);
-  border-bottom: 1px solid #ccc;
-}
+  const sections = {};
+  let currentSection = 'dashboard';
 
-nav h1 {
-  margin: 0;
-  font-size: 1.25rem;
-}
+  function loadSection(id) {
+    if (sections[id]) {
+      main.innerHTML = '';
+      main.appendChild(sections[id]);
+      return;
+    }
+    fetch(`./${id}.html`)
+      .then(res => res.text())
+      .then(html => {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = html;
+        const section = wrapper.querySelector('section');
+        if (section) {
+          sections[id] = section;
+          main.innerHTML = '';
+          main.appendChild(section);
 
-.nav-links, .nav-actions {
-  display: flex;
-  gap: 0.5rem;
-}
+          if (id === 'dashboard') {
+            const form = section.querySelector('#booking-form');
+            const saldo = section.querySelector('#saldo');
+            const list = section.querySelector('#booking-list');
+            const bookingsRef = ref(db, 'bookings');
 
-.nav-link {
-  padding: 0.4rem 0.8rem;
-  border: none;
-  background: none;
-  cursor: pointer;
-  text-decoration: none;
-  color: var(--text);
-  font-size: 1rem;
-  border-radius: 0.5rem;
-}
+            form?.addEventListener('submit', (e) => {
+              e.preventDefault();
+              const data = new FormData(form);
+              const type = data.get('type');
+              const amount = parseFloat(data.get('amount'));
+              const entry = {
+                datum: data.get('datum'),
+                betrag: type === 'einzahlung' ? amount : -amount,
+                grund: data.get('grund'),
+                name: data.get('name'),
+                uid: auth.currentUser?.uid || null,
+                createdAt: Date.now()
+              };
+              push(bookingsRef, entry);
+              form.reset();
+              form.querySelector('[name="datum"]').valueAsDate = new Date();
+            });
 
-.nav-link.active {
-  background: var(--primary);
-  color: white;
-}
-
-button {
-  cursor: pointer;
-  font-size: 1rem;
-  padding: 0.4rem 0.8rem;
-  border-radius: 0.4rem;
-  border: none;
-  background: var(--primary);
-  color: white;
-  transition: background 0.2s;
-}
-
-button:hover {
-  background: #084298;
-}
-
-main {
-  padding: 2rem;
-}
-
-section {
-  max-width: 800px;
-  margin: auto;
-  background: var(--card);
-  padding: 2rem;
-  border-radius: 1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-/* Mobile Navigation */
-.burger {
-  display: none;
-  font-size: 1.5rem;
-  background: none;
-  border: none;
-  color: var(--text);
-}
-
-@media (max-width: 768px) {
-  .burger {
-    display: block;
+            onValue(bookingsRef, (snapshot) => {
+              let sum = 0;
+              list.innerHTML = '';
+              snapshot.forEach((snap) => {
+                const d = snap.val();
+                sum += d.betrag;
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${d.datum}</td><td>${d.betrag.toFixed(2)}</td><td>${d.grund}</td><td>${d.name}</td>`;
+                list.appendChild(row);
+              });
+              saldo.textContent = sum.toFixed(2) + ' €';
+            });
+          }
+        }
+      });
   }
-  .nav-links {
-    display: none;
-    flex-direction: column;
-    width: 100%;
-  }
-  nav.active .nav-links {
-    display: flex;
-  }
-}
+
+  navButtons.forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      navButtons.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      loadSection(btn.dataset.target);
+      nav.classList.remove('active');
+    });
+  });
+
+  burger?.addEventListener('click', () => nav.classList.toggle('active'));
+  document.addEventListener('click', (e) => {
+    if (!nav.contains(e.target) && nav.classList.contains('active')) {
+      nav.classList.remove('active');
+    }
+  });
+
+  darkToggle?.addEventListener('click', () => {
+    const theme = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'light' : 'dark');
+  });
+
+  auth.onAuthStateChanged(user => {
+    const isLogin = location.pathname.includes('login.html');
+    if (user) {
+      if (logoutBtn) logoutBtn.style.display = 'inline-block';
+      if (isLogin) location.href = './index.html';
+      else loadSection('dashboard');
+    } else {
+      if (logoutBtn) logoutBtn.style.display = 'none';
+      if (!isLogin) location.href = './login.html';
+    }
+  });
+
+  logoutBtn?.addEventListener('click', () => {
+    auth.signOut().then(() => location.href = './login.html');
+  });
+});
